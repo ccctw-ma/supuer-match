@@ -3,3 +3,4 @@ data
 ./**/__pycache__
 patchnetvlad/pretrained_models
 model_weight
+__pycache__

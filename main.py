@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 import config
-from superpoint import SuperpointNet, frame2tensor
+from superpoint.superpoint import SuperpointNet, frame2tensor
 from matching import Matching
 import torch
 from tqdm import tqdm
@@ -16,7 +16,7 @@ path = os.path.join(config.dataDir, 'images')
 db_dir = config.dataDir
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-config = {
+net_config = {
     'superpoint': {
         'nms_radius': 4,
         'keypoint_threshold': 0.005,
@@ -46,7 +46,7 @@ class VisualOdometry():
         self.images = []
         self.orb = cv2.ORB_create(3000)
         self.sift = cv2.xfeatures2d.SIFT_create(3000)
-        self.superpoint = SuperpointNet(config, device)
+        self.superpoint = SuperpointNet(net_config, device)
         self.method = method
         self.matcher = matcher
 
@@ -64,7 +64,7 @@ class VisualOdometry():
         if self.matcher == 'flann':
             self.flann = cv2.FlannBasedMatcher(indexParams=index_params, searchParams=search_params)
         else:
-            self.superglue = Matching(config).eval().to(device)
+            self.superglue = Matching(net_config).eval().to(device)
 
     @staticmethod
     def _load_calib(filepath):

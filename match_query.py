@@ -49,7 +49,7 @@ import time
 from tqdm import tqdm
 import pandas as pd
 
-import file_config
+import config
 from patchnetvlad.models.models_generic import get_backend, get_model, get_pca_encoding
 from patchnetvlad.tools.patch_matcher import PatchMatcher
 from patchnetvlad.tools.datasets import input_transform
@@ -269,12 +269,13 @@ def main():
 
 
 def relocalize(im_path, feature_dir, gt_dir):
+
     print('Start relocalization!!!')
     # configfile = './patchnetvlad/configs/speed.ini'
-    configfile = os.path.join(file_config.patchnetvladDir, 'configs/speed.ini')
+    configfile = os.path.join(config.patchnetvladDir, 'configs/speed.ini')
     assert os.path.isfile(configfile)
-    config = configparser.ConfigParser()
-    config.read(configfile)
+    _config = configparser.ConfigParser()
+    _config.read(configfile)
 
     cuda = True
 
@@ -283,17 +284,17 @@ def relocalize(im_path, feature_dir, gt_dir):
     encoder_dim, encoder = get_backend()
 
     # must resume to do extraction
-    resume_ckpt = config['global_params']['resumePath'] + config['global_params']['num_pcs'] + '.pth.tar'
+    resume_ckpt = _config['global_params']['resumePath'] + _config['global_params']['num_pcs'] + '.pth.tar'
 
     if isfile(resume_ckpt):
         print("=> loading checkpoint '{}'".format(resume_ckpt))
         checkpoint = torch.load(resume_ckpt, map_location=lambda storage, loc: storage)
-        assert checkpoint['state_dict']['WPCA.0.bias'].shape[0] == int(config['global_params']['num_pcs'])
-        config['global_params']['num_clusters'] = str(checkpoint['state_dict']['pool.centroids'].shape[0])
+        assert checkpoint['state_dict']['WPCA.0.bias'].shape[0] == int(_config['global_params']['num_pcs'])
+        _config['global_params']['num_clusters'] = str(checkpoint['state_dict']['pool.centroids'].shape[0])
 
-        model = get_model(encoder, encoder_dim, config['global_params'], append_pca_layer=True)
+        model = get_model(encoder, encoder_dim, _config['global_params'], append_pca_layer=True)
 
-        if int(config['global_params']['nGPU']) > 1 and torch.cuda.device_count() > 1:
+        if int(_config['global_params']['nGPU']) > 1 and torch.cuda.device_count() > 1:
             model.encoder = nn.DataParallel(model.encoder)
             # if opt.mode.lower() != 'cluster':
             model.pool = nn.DataParallel(model.pool)
@@ -309,7 +310,7 @@ def relocalize(im_path, feature_dir, gt_dir):
         raise FileNotFoundError(im_path + " does not exist")
 
     # match_two(model, device, config, im_one, feature_dir)
-    res = retrieval(model, device, config, im_one, feature_dir, gt_dir)
+    res = retrieval(model, device, _config, im_one, feature_dir, gt_dir)
 
     torch.cuda.empty_cache()  # garbage clean GPU memory, a bug can occur when Pytorch doesn't automatically clear the
     # memory after runs

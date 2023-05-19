@@ -41,6 +41,8 @@
 # %BANNER_END%
 import os.path
 from pathlib import Path
+
+import cv2
 import torch
 from torch import nn
 import numpy as np
@@ -112,9 +114,9 @@ class SuperPoint(nn.Module):
         'remove_borders': 4,
     }
 
-    def __init__(self, config):
+    def __init__(self, _config):
         super().__init__()
-        self.config = {**self.default_config, **config}
+        self._config = {**self.default_config, **_config}
 
         self.relu = nn.ReLU(inplace=True)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -135,7 +137,7 @@ class SuperPoint(nn.Module):
 
         self.convDa = nn.Conv2d(c4, c5, kernel_size=3, stride=1, padding=1)
         self.convDb = nn.Conv2d(
-            c5, self.config['descriptor_dim'],
+            c5, self._config['descriptor_dim'],
             kernel_size=1, stride=1, padding=0)
 
         # path = Path(__file__).parent / 'weights/superpoint_v1.pth'
@@ -144,7 +146,7 @@ class SuperPoint(nn.Module):
         model = torch.load(str(path))
         self.load_state_dict(model)
 
-        mk = self.config['max_keypoints']
+        mk = self._config['max_keypoints']
         if mk == 0 or mk < -1:
             raise ValueError('\"max_keypoints\" must be positive or \"-1\"')
 
@@ -172,23 +174,23 @@ class SuperPoint(nn.Module):
         b, _, h, w = scores.shape
         scores = scores.permute(0, 2, 3, 1).reshape(b, h, w, 8, 8)
         scores = scores.permute(0, 1, 3, 2, 4).reshape(b, h * 8, w * 8)
-        scores = simple_nms(scores, self.config['nms_radius'])
+        scores = simple_nms(scores, self._config['nms_radius'])
 
         # Extract keypoints
         keypoints = [
-            torch.nonzero(s > self.config['keypoint_threshold'])
+            torch.nonzero(s > self._config['keypoint_threshold'])
             for s in scores]
         scores = [s[tuple(k.t())] for s, k in zip(scores, keypoints)]
 
         # Discard keypoints near the image borders
         keypoints, scores = list(zip(*[
-            remove_borders(k, s, self.config['remove_borders'], h * 8, w * 8)
+            remove_borders(k, s, self._config['remove_borders'], h * 8, w * 8)
             for k, s in zip(keypoints, scores)]))
 
         # Keep the k keypoints with highest score
-        if self.config['max_keypoints'] >= 0:
+        if self._config['max_keypoints'] >= 0:
             keypoints, scores = list(zip(*[
-                top_k_keypoints(k, s, self.config['max_keypoints'])
+                top_k_keypoints(k, s, self._config['max_keypoints'])
                 for k, s in zip(keypoints, scores)]))
 
         # Convert (h, w) to (x, y)
@@ -212,3 +214,47 @@ class SuperPoint(nn.Module):
             'scores': scores,
             'descriptors': descriptors,
         }
+
+
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+class SuperpointNet(torch.nn.Module):
+    def __init__(self,config, device):
+        super(SuperpointNet, self).__init__()
+        self.superpoint = SuperPoint(config.get('superpoint')).to(device)
+
+    def forward(self,image):
+        with torch.no_grad():
+            pred = self.superpoint({'image':image})
+        kp = pred['keypoints'][0].cpu().detach().numpy() # nx2 numpy
+        desc = pred['descriptors'][0].cpu().detach().numpy().T
+        scores = pred['scores'][0].cpu().detach().numpy()
+        keypoint = []
+        for i in range(len(kp)):
+            keypoint.append(cv2.KeyPoint(kp[i][0], kp[i][1], scores[i]))
+        keypoint = tuple(keypoint)
+        return keypoint, desc
+
+
+def frame2tensor(frame, device):
+    return torch.from_numpy(frame/255.).float()[None, None].to(device)
+
+
+def superpoint_test():
+    path = '/media/yushichen/LENOVO_USB_HDD/projects/VisualOdometry/ipin_1/image_l/frame_000000.png'
+    config = {
+        'superpoint': {
+            'nms_radius': 4,
+            'keypoint_threshold': 0.005,
+            'max_keypoints': -1,
+        },
+        'brute-force': {}
+    }
+
+    superpoint = SuperpointNet(config, device)
+    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    # frame2tensor
+    frame = frame2tensor(image, device)
+    res = superpoint(frame)
+    print('Finish!')
