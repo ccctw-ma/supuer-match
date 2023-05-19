@@ -8,8 +8,8 @@ import pymap3d as pm
 import config
 
 # 序列1第一帧经纬度
-b_lon = 127.370084
-b_lat = 36.383528
+b_lon = 127.370282
+b_lat = 36.383650
 
 floor = np.array([3]).reshape(1, 1)
 path = config.dataDir

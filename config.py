@@ -1,7 +1,7 @@
 import os
 
 baseDir = "C:/Users/Lenovo/msc/graduation/supermatch"
-siteDir = os.path.join(baseDir, 'dataSet/site1')
-dataDir = os.path.join(baseDir, 'dataSet/site1/seq2')
+siteDir = os.path.join(baseDir, 'data/t01')
+dataDir = os.path.join(baseDir, 'data/t01')
 modelDir = os.path.join(baseDir, 'model_weight')
 patchnetvladDir = os.path.join(baseDir, 'patchnetvlad')

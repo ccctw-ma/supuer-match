@@ -100,9 +100,9 @@ def main():
                         help='File name (with extension) to an ini file that stores most of the configuration data for patch-netvlad')
     # parser.add_argument('--dataset_file_path', type=str, required=True,
     #                     help='Full path (with extension) to a text file that stores the save location and name of all images in the dataset folder')
-    parser.add_argument('--dataset_root_dir', type=str, default='dataSet/site1/seq2/images',
+    parser.add_argument('--dataset_root_dir', type=str, default='data/t01/images',
                         help='If the files in dataset_file_path are relative, use dataset_root_dir as prefix.')
-    parser.add_argument('--output_features_dir', type=str, default='dataSet/site1/seq2/output_feature',
+    parser.add_argument('--output_features_dir', type=str, default='data/t01/output_feature',
                         help='Path to store all patch-netvlad features')
     parser.add_argument('--nocuda', action='store_true', help='If true, use CPU only. Else use GPU.')
 
